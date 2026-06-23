@@ -190,6 +190,15 @@
 
     .btn-nav:hover:not(:disabled) { background: #f5f5f5; }
 
+    .btn-delete {
+      background: #fff0f0;
+      color: #ef4444;
+      padding: 11px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .btn-delete:hover:not(:disabled) { background: #ffe4e4; }
+
     /* ── Add card form ── */
     .add-section {
       width: 100%;
@@ -303,6 +312,7 @@
 
     <div class="nav">
       <button class="btn-nav" id="btnPrev" onclick="navigate(-1)">← Prev</button>
+      <button class="btn-delete" id="btnDelete" onclick="deleteCard()">Delete</button>
       <button class="btn-nav" id="btnNext" onclick="navigate(1)">Next →</button>
     </div>
 
@@ -324,7 +334,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, getDocs
+      getFirestore, collection, addDoc, getDocs, deleteDoc, doc
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
@@ -402,6 +412,7 @@
         document.getElementById("backText").textContent  = "";
         document.getElementById("counter").textContent   = "";
         document.getElementById("btnPrev").disabled = true;
+        document.getElementById("btnDelete").disabled = true;
         document.getElementById("btnNext").disabled = true;
         return;
       }
@@ -411,6 +422,7 @@
       document.getElementById("backText").textContent  = c.back;
       document.getElementById("counter").textContent   = `${pos + 1} / ${cards.length}`;
       document.getElementById("btnPrev").disabled = pos === 0;
+      document.getElementById("btnDelete").disabled = false;
       document.getElementById("btnNext").disabled = pos === cards.length - 1;
     }
 
@@ -425,6 +437,24 @@
     window.flipCard = function() {
       if (cards.length === 0) return;
       document.getElementById("card").classList.toggle("flipped");
+    };
+
+    // ── Delete card ────────────────────────────────────────
+    window.deleteCard = async function() {
+      if (cards.length === 0) return;
+      const c = cards[order[pos]];
+      if (!confirm(`Delete "${c.front}"?`)) return;
+
+      await deleteDoc(doc(db, COL, c.id));
+
+      const deletedIdx = order[pos];
+      cards.splice(deletedIdx, 1);
+      // rebuild order without the deleted index, adjusting for shift
+      order = order
+        .filter(i => i !== deletedIdx)
+        .map(i => i > deletedIdx ? i - 1 : i);
+      if (pos >= order.length) pos = Math.max(0, order.length - 1);
+      render();
     };
 
     // ── Add card ───────────────────────────────────────────
